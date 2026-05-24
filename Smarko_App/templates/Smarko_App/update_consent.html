@@ -1,0 +1,218 @@
+{% extends "Smarko_App/base.html" %}
+
+{% block title %}Atualizar Consentimento - Smarko{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <!-- Alert de Informação -->
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <h4 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Atualização Necessária
+                </h4>
+                <p class="mb-0">
+                    Nossa Política de Privacidade foi atualizada para melhor conformidade com a LGPD.
+                    Por favor, revise e aceite para continuar usando o Smarko.
+                </p>
+            </div>
+
+            <!-- Formulário -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clipboard-check me-2"></i>Consentimento Atualizado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="consentForm">
+                        {% csrf_token %}
+
+                        <!-- Email (informativo) -->
+                        <div class="mb-4 p-3 bg-light rounded">
+                            <small class="text-muted d-block mb-2">
+                                <i class="bi bi-info-circle me-1"></i>Sua Conta
+                            </small>
+                            <p class="mb-0 fw-bold">{{ user_email }}</p>
+                        </div>
+
+                        <!-- Informação sobre Finalidades -->
+                        <div class="alert alert-info mb-4">
+                            <h6 class="alert-heading mb-2">
+                                <i class="bi bi-question-circle me-2"></i>O que são Finalidades?
+                            </h6>
+                            <p class="small mb-0">
+                                São os motivos pelos quais coletamos seus dados. Todas as finalidades abaixo são
+                                <strong>obrigatórias</strong> para que o Smarko funcione de forma segura. Você não pode desmarcar nenhuma delas.
+                            </p>
+                        </div>
+
+                        <!-- Finalidades de Processamento (Obrigatórias) -->
+                        <div class="mb-5">
+                            <h6 class="mb-3 fw-bold">
+                                <i class="bi bi-shield-lock me-2"></i>Dados que Coletamos e Por Quê
+                            </h6>
+
+                            <!-- Finalidade 1 -->
+                            <div class="card mb-3 border-success">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" id="purpose1"
+                                                   checked disabled style="cursor: not-allowed;">
+                                        </div>
+                                        <div class="ms-3 flex-grow-1">
+                                            <h6 class="mb-1">
+                                                🔑 Autenticação (Login Seguro)
+                                                <span class="badge bg-success">Obrigatório</span>
+                                            </h6>
+                                            <p class="mb-0 small text-muted">
+                                                Coletamos seu usuário, email e senha para permitir que você faça login
+                                                na sua conta de forma segura.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Finalidade 2 -->
+                            <div class="card mb-3 border-success">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" id="purpose2"
+                                                   checked disabled style="cursor: not-allowed;">
+                                        </div>
+                                        <div class="ms-3 flex-grow-1">
+                                            <h6 class="mb-1">
+                                                🛡️ Segurança Contra Fraudes
+                                                <span class="badge bg-success">Obrigatório</span>
+                                            </h6>
+                                            <p class="mb-0 small text-muted">
+                                                Coletamos seu IP (endereço de conexão) para detectar tentativas de acesso
+                                                suspeito e proteger sua conta contra hackers.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Finalidade 3 -->
+                            <div class="card mb-3 border-success">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" id="purpose3"
+                                                   checked disabled style="cursor: not-allowed;">
+                                        </div>
+                                        <div class="ms-3 flex-grow-1">
+                                            <h6 class="mb-1">
+                                                📧 Comunicação Por Email
+                                                <span class="badge bg-success">Obrigatório</span>
+                                            </h6>
+                                            <p class="mb-0 small text-muted">
+                                                Usamos seu email para enviar códigos de verificação de 2 fatores
+                                                e links para recuperar sua senha caso esqueça.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Finalidade 4 -->
+                            <div class="card mb-3 border-success">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" id="purpose4"
+                                                   checked disabled style="cursor: not-allowed;">
+                                        </div>
+                                        <div class="ms-3 flex-grow-1">
+                                            <h6 class="mb-1">
+                                                📋 Registros de Auditoria (Lei)
+                                                <span class="badge bg-success">Obrigatório</span>
+                                            </h6>
+                                            <p class="mb-0 small text-muted">
+                                                Mantemos registros de quando você entrou e saiu, conforme exigido
+                                                pela lei brasileira de proteção de dados (LGPD).
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-success mt-3 mb-0">
+                                <small class="mb-0">
+                                    <i class="bi bi-check-circle me-1"></i>
+                                    <strong>✓ Todos os dados são criptografados</strong> e armazenados com segurança máxima.
+                                </small>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Checkboxes de Aceitação -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 fw-bold">Você Concorda Com:</h6>
+
+                            <!-- Política de Privacidade -->
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="privacy" name="accepted_privacy"
+                                       required onchange="updateSubmitButton()">
+                                <label class="form-check-label" for="privacy">
+                                    <i class="bi bi-file-text me-1"></i>
+                                    Li e aceito a
+                                    <a href="{% url 'privacy' %}" target="_blank" class="link-primary fw-bold">
+                                        Política de Privacidade
+                                    </a>
+                                    <span class="badge bg-danger ms-2">Obrigatório</span>
+                                </label>
+                            </div>
+
+                            <!-- Termos de Uso -->
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="terms" name="accepted_terms"
+                                       required onchange="updateSubmitButton()">
+                                <label class="form-check-label" for="terms">
+                                    <i class="bi bi-file-earmark-check me-1"></i>
+                                    Li e aceito os
+                                    <a href="{% url 'privacy' %}" target="_blank" class="link-primary fw-bold">
+                                        Termos de Uso
+                                    </a>
+                                    <span class="badge bg-danger ms-2">Obrigatório</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Botão de Envio -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
+                                <i class="bi bi-check-circle me-2"></i>Aceitar e Continuar
+                            </button>
+                        </div>
+
+                        <p class="text-center text-muted small mt-3 mb-0">
+                            <i class="bi bi-lock-fill me-1"></i>
+                            Seus dados são criptografados e protegidos conforme LGPD
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateSubmitButton() {
+        const privacyChecked = document.getElementById('privacy').checked;
+        const termsChecked = document.getElementById('terms').checked;
+        const submitBtn = document.getElementById('submitBtn');
+
+        submitBtn.disabled = !(privacyChecked && termsChecked);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSubmitButton();
+    });
+</script>
+{% endblock %}

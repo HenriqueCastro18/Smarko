@@ -1,0 +1,10 @@
+.env
+serviceAccountKey.json
+db.sqlite3
+__pycache__/
+venv/
+staticfiles_build/
+*.pyc
+.vscode/
+.vercel
+smarko-91184-firebase-adminsdk-fbsvc-4ed55cdcd5.json

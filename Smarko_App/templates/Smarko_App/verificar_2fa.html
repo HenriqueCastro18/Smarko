@@ -1,0 +1,44 @@
+{% extends 'Smarko_App/base.html' %}
+
+{% block title %}Verificação 2FA | Smarko{% endblock %}
+
+{% block content %}
+<section class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card card-animate p-4 shadow-sm text-center animate__animated animate__fadeInUp">
+                <div class="mb-3">
+                    <i class="bi bi-shield-lock text-primary" style="font-size: 3rem;"></i>
+                </div>
+                <h2 class="fw-bold h4">Autenticação de Dois Fatores</h2>
+                <p class="text-muted small">Insira o código de 6 dígitos gerado pelo sistema.</p>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-danger py-2 small border-0 animate__animated animate__shakeX">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <input type="text" name="codigo" class="form-control form-control-lg text-center fw-bold" 
+                               placeholder="000000" maxlength="6" pattern="\d*" inputmode="numeric" autofocus required>
+                    </div>
+                    <button type="submit" class="btn btn-custom w-100 py-2 fw-bold">
+                        Confirmar Código
+                    </button>
+                </form>
+
+                <div class="mt-4">
+                    <a href="{% url 'login' %}" class="text-decoration-none small text-muted">
+                        <i class="bi bi-arrow-left"></i> Voltar ao login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

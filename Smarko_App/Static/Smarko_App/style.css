@@ -1,0 +1,49 @@
+.cidade-page-container {
+    margin: 0 230px;
+    margin-top: 120px;
+}
+
+.navbar-custom {
+    background-color: #1a182e;
+}
+
+/* Tipografia */
+.cidade-page-container h1 {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.card-auth {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.card-auth:hover {
+    transform: translateY(-5px);
+}
+
+.btn-custom {
+    background-color: #1a182e;
+    color: white;
+    border-radius: 12px;
+    padding: 10px 20px;
+    border: 2px solid #000;
+}
+
+.btn-custom:hover {
+    background-color: #2a284e;
+    color: white;
+}
+
+.letter-spacing-lg {
+    letter-spacing: 0.5rem;
+    font-size: 1.5rem;
+}
+
+@media (max-width: 1128px) { .cidade-page-container { margin: 0 155px; margin-top: 120px; } }
+@media (max-width: 997px) { .cidade-page-container { margin: 0 90px; margin-top: 120px; } }
+@media (max-width: 646px) { .cidade-page-container { margin: 0 40px; margin-top: 120px; } }
+@media (max-width: 446px) { .cidade-page-container { margin: 0 20px; margin-top: 120px; } }

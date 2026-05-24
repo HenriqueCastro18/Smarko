@@ -1,0 +1,43 @@
+{% extends 'Smarko_App/base.html' %}
+
+{% block title %}Dashboard | Smarko{% endblock %}
+
+{% block content %}
+<div class="container py-5 animate__animated animate__fadeIn">
+    <header class="row mb-5 align-items-center">
+        <div class="col-lg-8 text-center text-lg-start">
+            <h1 class="display-4 fw-bold">Bem-vindo, {{ request.session.username }}!</h1>
+            <p class="lead text-muted">Sua sessão está protegida com criptografia <strong>Bcrypt</strong>.</p>
+        </div>
+       
+    </header>
+
+    <div class="row g-4 justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <article class="card card-animate p-4 h-100 border-0 shadow-sm text-center">
+                <div class="rounded-circle bg-dark bg-opacity-10 d-inline-flex p-3 mb-3 mx-auto">
+                    <i class="bi bi-person-badge text-dark h3 mb-0"></i>
+                </div>
+                <h5 class="fw-bold">Perfil do {{ user_role|title }}</h5>
+                <p class="small text-muted">{{ request.session.username }}</p>
+                <div class="mt-auto">
+                    <a href="{% url 'user_data' %}" class="btn btn-dark btn-sm rounded-pill w-100">Gerenciar Perfil</a>
+                </div>
+            </article>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <article class="card card-animate p-4 h-100 border-0 shadow-sm text-center">
+                <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex p-3 mb-3 mx-auto">
+                    <i class="bi bi-shield-lock text-success h3 mb-0"></i>
+                </div>
+                <h5 class="fw-bold">Status de Segurança</h5>
+                <p class="small text-muted">2FA e Políticas de Senha ativos.</p>
+                <div class="mt-auto">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">Sistema Protegido</span>
+                </div>
+            </article>
+        </div>
+    </div>
+</div>
+{% endblock %}

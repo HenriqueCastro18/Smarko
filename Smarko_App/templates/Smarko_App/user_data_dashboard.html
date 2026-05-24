@@ -1,0 +1,339 @@
+{% extends "Smarko_App/base.html" %}
+
+{% block title %}Meus Dados - Smarko{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="alert alert-info mb-5" role="alert">
+                <h1 class="h3 mb-2">
+                    <i class="bi bi-shield-lock me-2"></i>Meus Dados Pessoais
+                </h1>
+                <p class="text-muted mb-0">
+                    Visualize, exporte ou gerencie seus dados em conformidade com a LGPD.
+                </p>
+            </div>
+
+            {% if messages %}
+            <div class="alert alert-dismissible fade show" id="messages" role="alert">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-2" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Seção 1: Perfil do Usuário (Destaque) -->
+            <section class="card shadow-lg mb-4 border-primary">
+                <div class="card-header bg-gradient bg-primary text-white py-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+                        <div class="ms-3">
+                            <h4 class="mb-0">{{ username }}</h4>
+                            <p class="text-light small mb-0">Perfil do {{ user_role|title }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light p-3 rounded-circle me-3">
+                                    <i class="bi bi-envelope text-primary" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <label class="form-label text-muted small mb-1">Email</label>
+                                    <p class="mb-0 fw-bold">{{ email }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light p-3 rounded-circle me-3">
+                                    <i class="bi bi-shield-lock text-success" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <label class="form-label text-muted small mb-1">Status</label>
+                                    <p class="mb-0 fw-bold">
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle me-1"></i>Ativo
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="alert alert-info small mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Seus Dados:</strong> Veja todos os dados que armazenamos
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <a href="{% url 'export_data' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-download me-1"></i>Exportar JSON
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção 2: Consentimentos -->
+            <section class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-check-circle me-2"></i>Histórico de Consentimentos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if consents %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Versão</th>
+                                    <th>Data de Consentimento</th>
+                                    <th>Status</th>
+                                    <th>IP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consent in consents %}
+                                <tr>
+                                    <td><strong>v{{ consent.version }}</strong></td>
+                                    <td>{{ consent.given_at|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if consent.revoked_at %}
+                                            <span class="badge bg-danger">Revogado</span>
+                                            <br>
+                                            <small class="text-muted">{{ consent.revoked_at|date:"d/m/Y H:i" }}</small>
+                                        {% else %}
+                                            <span class="badge bg-success">Ativo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><code class="small">{{ consent.ip_address|default:"N/A" }}</code></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Nenhum registro de consentimento encontrado. É necessário aceitar a política de privacidade.
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Seção 3: Logs de Auditoria -->
+            <section class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Atividade Recente (Últimos 10 Acessos)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if audit_logs %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Evento</th>
+                                    <th>Data/Hora</th>
+                                    <th>IP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in audit_logs %}
+                                <tr>
+                                    <td>
+                                        {% if "Login" in log.evento %}
+                                            <i class="bi bi-check-circle text-success me-1"></i>
+                                        {% elif "Erro" in log.evento or "Falha" in log.evento %}
+                                            <i class="bi bi-exclamation-circle text-danger me-1"></i>
+                                        {% elif "Reset" in log.evento %}
+                                            <i class="bi bi-arrow-counterclockwise text-warning me-1"></i>
+                                        {% else %}
+                                            <i class="bi bi-info-circle text-info me-1"></i>
+                                        {% endif %}
+                                        {{ log.evento }}
+                                    </td>
+                                    <td>{{ log.data_hora|date:"d/m/Y H:i" }}</td>
+                                    <td><code class="small">{{ log.ip }}</code></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{% url 'export_data' %}" class="btn btn-link btn-sm mt-3">
+                        <i class="bi bi-download me-1"></i>Visualizar todos os logs (export completo)
+                    </a>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Nenhuma atividade registrada ainda.
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Seção 4: Ações LGPD -->
+            <section class="card shadow-sm border-danger mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear me-2"></i>Gestão de Dados e Consentimento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Ação 1: Exportar Dados -->
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-download text-info me-2"></i>Exportar Meus Dados
+                                    </h6>
+                                    <p class="card-text small">
+                                        Baixe um arquivo JSON com todos os seus dados pessoais, consentimentos e histórico de auditoria.
+                                    </p>
+                                    <p class="card-text small text-muted mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Direito de Portabilidade (LGPD Art. 20)
+                                    </p>
+                                    <a href="{% url 'export_data' %}" class="btn btn-info btn-sm">
+                                        <i class="bi bi-cloud-download me-1"></i>Exportar JSON
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ação 2: Visualizar Política -->
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-file-text text-primary me-2"></i>Política de Privacidade
+                                    </h6>
+                                    <p class="card-text small">
+                                        Leia nossa Política de Privacidade completa para entender como tratamos seus dados.
+                                    </p>
+                                    <p class="card-text small text-muted mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Transparência (LGPD Art. 9)
+                                    </p>
+                                    <a href="{% url 'privacy' %}" class="btn btn-primary btn-sm" target="_blank">
+                                        <i class="bi bi-arrow-up-right me-1"></i>Ler Política
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ação 3: Revogar Consentimento -->
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-x-circle text-warning me-2"></i>Revogar Consentimento
+                                    </h6>
+                                    <p class="card-text small">
+                                        Retire seu consentimento para o processamento de dados a qualquer momento.
+                                    </p>
+                                    <p class="card-text small text-muted mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Direito de Revogação (LGPD Art. 8)
+                                    </p>
+                                    {% if consents %}
+                                    <form method="POST" action="{% url 'revoke_consent' %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-warning btn-sm"
+                                                onclick="return confirm('Tem certeza? Seus dados deixarão de ser processados.')">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>Revogar
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <button class="btn btn-warning btn-sm" disabled>
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Sem consentimento ativo
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ação 4: Solicitar Exclusão -->
+                        <div class="col-md-6">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-trash text-danger me-2"></i>Excluir Minha Conta
+                                    </h6>
+                                    <p class="card-text small">
+                                        Solicite a exclusão permanente de sua conta. Você tem 30 dias para cancelar.
+                                    </p>
+                                    <p class="card-text small text-muted mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Direito ao Esquecimento (LGPD Art. 17)
+                                    </p>
+                                    {% if deletion_request %}
+                                        <div class="alert alert-warning mb-3">
+                                            <small>
+                                                <i class="bi bi-hourglass-split me-1"></i>
+                                                Exclusão agendada para {{ deletion_request.deletion_scheduled_for|date:"d/m/Y" }}
+                                            </small>
+                                        </div>
+                                        <a href="{% url 'cancel_deletion' %}?token={{ deletion_request.confirmation_token }}"
+                                           class="btn btn-secondary btn-sm">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i>Cancelar Exclusão
+                                        </a>
+                                    {% else %}
+                                    <form method="POST" action="{% url 'request_deletion' %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                onclick="return confirm('Tem certeza? Sua conta será deletada em 30 dias. Você receberá um email para confirmar.')">
+                                            <i class="bi bi-trash me-1"></i>Solicitar Exclusão
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Rodapé -->
+            <div class="text-center text-muted mt-5 pt-5 border-top">
+                <p class="small mb-3">
+                    Suas informações são sagradas. Estamos comprometidos com sua privacidade e segurança.
+                </p>
+                <p class="small">
+                    <i class="bi bi-shield-check text-success me-1"></i>
+                    Conformidade LGPD • Segurança de Ponta • Sem Rastreamento Comercial
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-hide messages after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        const messagesDiv = document.getElementById('messages');
+        if (messagesDiv) {
+            setTimeout(function() {
+                const alerts = messagesDiv.querySelectorAll('.alert');
+                alerts.forEach(alert => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+        }
+    });
+</script>
+{% endblock %}

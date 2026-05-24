@@ -1,0 +1,52 @@
+ :root {
+            --primary-dark: #1a182e;
+            --accent-color: #4e44e7;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body { 
+            background-color: #f4f7f6; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--primary-dark);
+        }
+
+        .navbar-custom {
+            background: rgba(20, 19, 36, 0.95);
+            backdrop-filter: blur(10px);
+            transition: var(--transition-smooth);
+        }
+
+        .card-animate {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            transition: var(--transition-smooth);
+        }
+
+        .card-animate:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+
+        .btn-custom {
+            background-color: var(--primary-dark);
+            color: white;
+            border-radius: 12px;
+            padding: 12px 25px;
+            border: none;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-custom:hover {
+            background-color: var(--accent-color);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .cidade-page-container {
+            margin: 20px auto;
+            max-width: 1200px;
+            padding: 0 15px;
+        }
+
+        .reveal { opacity: 0; }

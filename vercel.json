@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "buildCommand": "pip install -r requirements.txt && python manage.py collectstatic --noinput",
+  "builds": [
+    {
+      "src": "Smarko/wsgi.py",
+      "use": "@vercel/python",
+      "config": { "runtime": "python3.12" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "Smarko/wsgi.py"
+    }
+  ]
+}
