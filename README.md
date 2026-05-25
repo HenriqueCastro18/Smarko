@@ -8,6 +8,13 @@
 
 ---
 
+### Poster
+
+./docs/smarko_poster_final.pdf
+
+
+---
+
 ## ⚖️ Conformidade e Privacidade (LGPD)
 
 **Smarko 2.0 implementa conformidade total com LGPD (Lei Geral de Proteção de Dados Pessoais):**
