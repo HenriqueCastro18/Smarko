@@ -10,7 +10,7 @@
 
 ### Poster
 
-./docs/smarko_poster_final.pdf
+![](./docs/smarko_poster_final.pdf)
 
 
 ---
