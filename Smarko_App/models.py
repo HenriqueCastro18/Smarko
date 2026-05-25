@@ -2,11 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+
 class PerfilUsuario(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.user.username
+
 
 class LogSeguranca(models.Model):
     usuario_nome = models.CharField(max_length=255, default='sistema')
@@ -16,6 +18,7 @@ class LogSeguranca(models.Model):
 
     def __str__(self):
         return f"{self.usuario_nome} - {self.evento}"
+
 
 class DataCategory(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -27,6 +30,7 @@ class DataCategory(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class DataPurpose(models.Model):
     LEGAL_BASIS_CHOICES = [
@@ -46,6 +50,7 @@ class DataPurpose(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class ConsentRecord(models.Model):
     firebase_uid = models.CharField(max_length=255, db_index=True)
@@ -79,6 +84,7 @@ class ConsentRecord(models.Model):
     def is_valid(self):
         return self.revoked_at is None and self.is_active
 
+
 class ConsentVersion(models.Model):
     version = models.IntegerField(unique=True)
     effective_date = models.DateTimeField()
@@ -90,6 +96,7 @@ class ConsentVersion(models.Model):
 
     def __str__(self):
         return f"Versão {self.version} ({self.effective_date.date()})"
+
 
 class AccountDeletionRequest(models.Model):
     STATUS_CHOICES = [

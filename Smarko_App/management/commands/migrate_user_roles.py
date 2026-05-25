@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from firebase_admin import firestore
 
+
 class Command(BaseCommand):
     help = 'Migrate user roles in Firestore - adds role=user to all users, role=developer to HenriqueCastro'
 

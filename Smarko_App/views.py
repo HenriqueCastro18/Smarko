@@ -20,11 +20,13 @@ try:
 except Exception:
     db = None
 
+
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         return x_forwarded_for.split(',')[0]
     return request.META.get('REMOTE_ADDR')
+
 
 def registrar_log_firebase(uid, username, evento, ip):
     if not db:
@@ -40,6 +42,7 @@ def registrar_log_firebase(uid, username, evento, ip):
     except Exception as e:
         print(f"Failed to log {evento}: {e}")
 
+
 def firebase_login_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
@@ -48,14 +51,19 @@ def firebase_login_required(view_func):
         return view_func(request, *args, **kwargs)
     return _wrapped_view
 
+
 def user_has_valid_consent(uid):
     if not db:
         return True
     try:
-        docs = db.collection('consent_records').where('firebase_uid', '==', uid).where('is_active', '==', True).limit(1).stream()
+        query = db.collection('consent_records')
+        query = query.where('firebase_uid', '==', uid)
+        query = query.where('is_active', '==', True)
+        docs = query.limit(1).stream()
         return next(iter(docs), None) is not None
     except Exception:
         return False
+
 
 def _render_2fa_email(code, name):
     greeting = f"Hello {name}" if name else "Hello"
@@ -68,7 +76,9 @@ def _render_2fa_email(code, name):
             <p>{greeting},</p>
             <p>Your authentication code:</p>
             <div style="background: white; padding: 20px; text-align: center; border: 1px solid #ddd; margin: 20px 0;">
-                <code style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">{code}</code>
+                <code style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">
+                    {code}
+                </code>
             </div>
             <p style="color: #666; font-size: 12px;">Valid for 2 minutes. Don't share this code.</p>
         </div>
@@ -85,6 +95,7 @@ def send_2fa_email(email, code, name=None):
         html_message=_render_2fa_email(code, name)
     )
 
+
 def register_view(request):
     if request.method == "POST":
         if not db:
@@ -97,7 +108,6 @@ def register_view(request):
         confirmacao = request.POST.get('confirmacao')
         accepted_terms = request.POST.get('accepted_terms')
         accepted_privacy = request.POST.get('accepted_privacy')
-
 
         if not usuario or not senha or not email:
             messages.error(request, "Preencha todos os campos obrigatórios.")
@@ -146,6 +156,7 @@ def register_view(request):
 
     return render(request, 'Smarko_App/register.html')
 
+
 def login_view(request):
     if request.method == "POST":
         if not db:
@@ -186,15 +197,31 @@ def login_view(request):
         bloqueio = p_data.get('bloqueado_ate')
 
         if bloqueio and timezone.now() < bloqueio:
-            minutos_restantes = int((bloqueio - timezone.now()).total_seconds() / 60) + 1
-            registrar_log_firebase(uid, username_real or email_login, "Tentativa de login bloqueada (conta em cooldown)", get_client_ip(request))
-            messages.error(request, f"Conta bloqueada por excesso de tentativas. Tente novamente em {minutos_restantes} min.")
+            minutos_restantes = int(
+                (bloqueio - timezone.now()).total_seconds() / 60
+            ) + 1
+            log_msg = 'Tentativa de login bloqueada (conta em cooldown)'
+            registrar_log_firebase(
+                uid, username_real or email_login, log_msg, get_client_ip(request)
+            )
+            messages.error(
+                request,
+                f"Conta bloqueada por excesso de tentativas. Tente novamente em {minutos_restantes} min."
+            )
             return render(request, 'Smarko_App/login.html')
 
         api_key = getattr(settings, 'FIREBASE_WEB_API_KEY', '')
-        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
-        resp = requests.post(url, json={"email": email_login, "password": senha_digitada, "returnSecureToken": True})
-        
+        url = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword'
+        url = f"{url}?key={api_key}"
+        resp = requests.post(
+            url,
+            json={
+                "email": email_login,
+                "password": senha_digitada,
+                "returnSecureToken": True
+            }
+        )
+
         if resp.status_code == 200:
             perfil_ref.update({'tentativas_falhas': 0, 'bloqueado_ate': None})
 
@@ -211,14 +238,24 @@ def login_view(request):
             tentativas = p_data.get('tentativas_falhas', 0) + 1
             perfil_ref.update({'tentativas_falhas': tentativas})
             if tentativas >= 3:
-                perfil_ref.update({'bloqueado_ate': timezone.now() + timedelta(minutes=5)})
-                registrar_log_firebase(uid, username_real or email_login, "Falha login - Conta bloqueada (3 tentativas)", get_client_ip(request))
-                messages.error(request, "Múltiplas tentativas falhas. Conta bloqueada por 5 minutos.")
+                perfil_ref.update({
+                    'bloqueado_ate': timezone.now() + timedelta(minutes=5)
+                })
+                log_msg = 'Falha login - Conta bloqueada (3 tentativas)'
+                registrar_log_firebase(
+                    uid, username_real or email_login, log_msg, get_client_ip(request)
+                )
+                msg = 'Múltiplas tentativas falhas. Conta bloqueada por 5 minutos.'
+                messages.error(request, msg)
             else:
-                registrar_log_firebase(uid, username_real or email_login, f"Falha login - Senha incorreta (tentativa {tentativas}/3)", get_client_ip(request))
-                messages.error(request, f"Senha incorreta. Tentativa {tentativas} de 3.")
+                log_msg = f'Falha login - Senha incorreta (tentativa {tentativas}/3)'
+                registrar_log_firebase(
+                    uid, username_real or email_login, log_msg, get_client_ip(request)
+                )
+                messages.error(request, f'Senha incorreta. Tentativa {tentativas} de 3.')
 
     return render(request, 'Smarko_App/login.html')
+
 
 def verificar_2fa_view(request):
     if request.method == "POST":
@@ -257,7 +294,7 @@ def reset_password_view(request):
                 handle_code_in_app=False,
             )
             fb_link = firebase_auth.generate_password_reset_link(email, action_settings)
-            
+
             parsed_url = urllib.parse.urlparse(fb_link)
             oob_code = urllib.parse.parse_qs(parsed_url.query).get('oobCode', [None])[0]
 
@@ -339,14 +376,14 @@ def password_reset_confirm_view(request):
         try:
             reset_url = f"https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key={api_key}"
             resp = requests.post(reset_url, json={"oobCode": oob_code, "newPassword": nova_senha})
-            
+
             if resp.status_code == 200:
                 uid = resp.json().get('localId')
                 if uid:
                     db.collection('perfis').document(uid).update({'senha_hash': make_password(nova_senha)})
 
                 registrar_log_firebase(uid, token_data.get('email'), "Senha Redefinida", ip)
-                token_ref.delete() 
+                token_ref.delete()
                 messages.success(request, "Senha atualizada com sucesso! Faça login.")
                 return redirect('login')
             else:
@@ -377,6 +414,7 @@ def logout_view(request):
     request.session.flush()
     return redirect('login')
 
+
 def ping_view(request):
     if request.session.get('uid'):
         request.session.modified = True
@@ -404,7 +442,11 @@ def user_data_view(request):
         perfil = {}
 
     try:
-        consent_docs = db.collection('consent_records').where('firebase_uid', '==', uid).where('is_active', '==', True).order_by('given_at', direction=firestore.Query.DESCENDING).stream()
+        query = db.collection('consent_records')
+        query = query.where('firebase_uid', '==', uid)
+        query = query.where('is_active', '==', True)
+        query = query.order_by('given_at', direction=firestore.Query.DESCENDING)
+        consent_docs = query.stream()
         consents = [doc.to_dict() for doc in consent_docs]
     except Exception:
         consents = []
@@ -416,7 +458,10 @@ def user_data_view(request):
         audit_logs = []
 
     try:
-        deletion_docs = db.collection('account_deletion_requests').where('firebase_uid', '==', uid).where('status', '==', 'pending').limit(1).stream()
+        query = db.collection('account_deletion_requests')
+        query = query.where('firebase_uid', '==', uid)
+        query = query.where('status', '==', 'pending')
+        deletion_docs = query.limit(1).stream()
         deletion_request = next(iter(deletion_docs), None)
         if deletion_request:
             deletion_request = deletion_request.to_dict()
@@ -451,7 +496,10 @@ def export_user_data_view(request):
         logs = []
 
     try:
-        consent_docs = db.collection('consent_records').where('firebase_uid', '==', uid).order_by('given_at', direction=firestore.Query.DESCENDING).stream()
+        query = db.collection('consent_records')
+        query = query.where('firebase_uid', '==', uid)
+        query = query.order_by('given_at', direction=firestore.Query.DESCENDING)
+        consent_docs = query.stream()
         consents = [doc.to_dict() for doc in consent_docs]
     except Exception:
         consents = []
@@ -518,14 +566,17 @@ def revoke_consent_view(request):
     username = request.session.get('username')
 
     try:
-        consent_docs = db.collection('consent_records').where('firebase_uid', '==', uid).where('is_active', '==', True).order_by('given_at', direction=firestore.Query.DESCENDING).limit(1).stream()
+        query = db.collection('consent_records')
+        query = query.where('firebase_uid', '==', uid)
+        query = query.where('is_active', '==', True)
+        query = query.order_by('given_at', direction=firestore.Query.DESCENDING)
+        consent_docs = query.limit(1).stream()
         consent_doc = next(iter(consent_docs), None)
 
         if not consent_doc:
             messages.error(request, "Nenhum registro de consentimento encontrado.")
             return redirect('user_data')
 
-        consent_data = consent_doc.to_dict()
         revoked_at = timezone.now()
 
         db.collection('consent_records').document(consent_doc.id).update({
@@ -557,7 +608,8 @@ def revoke_consent_view(request):
             html_message=html_msg
         )
 
-        messages.success(request, "Seu consentimento foi revogado com sucesso. Enviamos um email de confirmação.")
+        msg = 'Seu consentimento foi revogado com sucesso. Enviamos um email de confirmação.'
+        messages.success(request, msg)
         return redirect('user_data')
     except Exception as e:
         messages.error(request, f"Erro ao revogar consentimento: {str(e)}")
@@ -612,9 +664,11 @@ def request_account_deletion_view(request):
             html_message=html_msg
         )
 
-        registrar_log_firebase(uid, username, "Exclusão de Conta Solicitada (30 dias)", get_client_ip(request))
+        log_msg = 'Exclusão de Conta Solicitada (30 dias)'
+        registrar_log_firebase(uid, username, log_msg, get_client_ip(request))
 
-        messages.success(request, "Solicitação de exclusão enviada. Você tem 30 dias para cancelar.")
+        msg = 'Solicitação de exclusão enviada. Você tem 30 dias para cancelar.'
+        messages.success(request, msg)
         return redirect('user_data')
     except Exception as e:
         messages.error(request, f"Erro ao solicitar exclusão: {str(e)}")
@@ -629,7 +683,9 @@ def cancel_account_deletion_view(request):
         return redirect('login')
 
     try:
-        deletion_docs = db.collection('account_deletion_requests').where('confirmation_token', '==', token).limit(1).stream()
+        query = db.collection('account_deletion_requests')
+        query = query.where('confirmation_token', '==', token)
+        deletion_docs = query.limit(1).stream()
         deletion_doc = next(iter(deletion_docs), None)
 
         if not deletion_doc:
@@ -644,6 +700,7 @@ def cancel_account_deletion_view(request):
             'status': 'canceled'
         })
 
+        deletion_data = deletion_doc.to_dict()
         registrar_log_firebase(
             deletion_data.get('firebase_uid'),
             deletion_data.get('email'),
@@ -682,7 +739,6 @@ def update_consent_view(request):
             accepted_privacy = request.POST.get('accepted_privacy') == 'on'
             accepted_terms = request.POST.get('accepted_terms') == 'on'
 
-
             if not accepted_privacy or not accepted_terms:
                 try:
                     purpose_docs = db.collection('data_purposes').stream()
@@ -690,15 +746,16 @@ def update_consent_view(request):
                 except Exception:
                     purposes = []
 
-                messages.error(request, "Você deve aceitar a Política de Privacidade e os Termos de Uso.")
-                return render(request, 'Smarko_App/update_consent.html', {
+                msg = 'Você deve aceitar a Política de Privacidade e os Termos de Uso.'
+                messages.error(request, msg)
+                context = {
                     'purposes': purposes,
                     'user_email': email,
-                })
+                }
+                return render(request, 'Smarko_App/update_consent.html', context)
 
             purposes = request.POST.getlist('purpose_ids')
             version_info = get_current_policy_version()
-
 
             db.collection('consent_records').document(f"{uid}_consent").set({
                 'firebase_uid': uid,
@@ -713,7 +770,8 @@ def update_consent_view(request):
                 'given_at': firestore.SERVER_TIMESTAMP,
             })
 
-            registrar_log_firebase(uid, email, f"Consentimento Atualizado v{version_info.get('version')}", get_client_ip(request))
+            log_msg = f"Consentimento Atualizado v{version_info.get('version')}"
+            registrar_log_firebase(uid, email, log_msg, get_client_ip(request))
 
             if 'pending_consent_uid' in request.session:
                 del request.session['pending_consent_uid']
@@ -727,7 +785,8 @@ def update_consent_view(request):
                 purposes = [doc.to_dict() for doc in purpose_docs]
             except Exception:
                 purposes = []
-            return render(request, 'Smarko_App/update_consent.html', {
+            context = {
                 'purposes': purposes,
                 'user_email': email,
-            })
+            }
+            return render(request, 'Smarko_App/update_consent.html', context)

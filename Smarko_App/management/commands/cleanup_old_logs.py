@@ -2,8 +2,8 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 from firebase_admin import firestore
-from django.db.models import Q
 from Smarko_App.models import LogSeguranca
+
 
 class Command(BaseCommand):
     help = 'Delete audit logs older than 6 months (LGPD compliance - Art. 15-18)'
@@ -63,9 +63,8 @@ class Command(BaseCommand):
 
         except ValueError as e:
             if 'Firebase app does not exist' in str(e):
-                self.stdout.write(
-                    self.style.WARNING('[INFO] Firebase not initialized (development mode) - skipping Firestore cleanup')
-                )
+                msg = '[INFO] Firebase not initialized (development mode) - skipping Firestore cleanup'
+                self.stdout.write(self.style.WARNING(msg))
                 count_firestore = 0
             else:
                 self.stdout.write(
@@ -101,13 +100,10 @@ class Command(BaseCommand):
             )
             return
 
-        # ========== Summary ==========
         total_deleted = count_firestore + count_django
 
-        self.stdout.write(
-            self.style.SUCCESS(f'\n[SUCCESS] Cleanup completed!')
-        )
-        self.stdout.write(f'\nSummary:')
+        self.stdout.write(self.style.SUCCESS('\n[SUCCESS] Cleanup completed!'))
+        self.stdout.write('\nSummary:')
         self.stdout.write(f'  - Firestore logs deleted: {count_firestore}')
         self.stdout.write(f'  - Django database logs deleted: {count_django}')
         self.stdout.write(f'  - Total deleted: {total_deleted}')
@@ -115,17 +111,14 @@ class Command(BaseCommand):
         self.stdout.write(f'  - Retention period: {days_to_keep} days')
 
         if dry_run:
-            self.stdout.write(
-                self.style.WARNING('\n[DRY RUN] No data was actually deleted. Run without --dry-run to execute.')
-            )
+            msg = '\n[DRY RUN] No data was actually deleted. Run without --dry-run to execute.'
+            self.stdout.write(self.style.WARNING(msg))
 
-        # ========== LGPD Compliance Note ==========
-        self.stdout.write(
-            self.style.WARNING(
-                f'\n[LGPD] Compliance: Art. 15-18\n'
-                f'   - Logs older than {days_to_keep} days are deleted\n'
-                f'   - Consent Records are kept (permanent proof)\n'
-                f'   - User data is accessible via /user-data/\n'
-                f'   - Users can request deletion via /request-deletion/\n'
-            )
+        lgpd_msg = (
+            f'\n[LGPD] Compliance: Art. 15-18\n'
+            f'   - Logs older than {days_to_keep} days are deleted\n'
+            f'   - Consent Records are kept (permanent proof)\n'
+            f'   - User data is accessible via /user-data/\n'
+            f'   - Users can request deletion via /request-deletion/\n'
         )
+        self.stdout.write(self.style.WARNING(lgpd_msg))
