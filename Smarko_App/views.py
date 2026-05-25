@@ -17,7 +17,7 @@ from django.views.decorators.http import require_http_methods
 
 try:
     db = firestore.client()
-except Exception as _:
+except Exception:
     db = None
 
 def get_client_ip(request):
@@ -187,7 +187,7 @@ def login_view(request):
 
         if bloqueio and timezone.now() < bloqueio:
             minutos_restantes = int((bloqueio - timezone.now()).total_seconds() / 60) + 1
-            registrar_log_firebase(uid, username_real or email_login, f"Tentativa de login bloqueada (conta em cooldown)", get_client_ip(request))
+            registrar_log_firebase(uid, username_real or email_login, "Tentativa de login bloqueada (conta em cooldown)", get_client_ip(request))
             messages.error(request, f"Conta bloqueada por excesso de tentativas. Tente novamente em {minutos_restantes} min.")
             return render(request, 'Smarko_App/login.html')
 
@@ -636,9 +636,7 @@ def cancel_account_deletion_view(request):
             messages.error(request, "Token não encontrado.")
             return redirect('login')
 
-        deletion_data = deletion_doc.to_dict()
-
-        if deletion_data.get('status') != 'pending':
+        if deletion_doc.to_dict().get('status') != 'pending':
             messages.error(request, "Esta solicitação já foi processada.")
             return redirect('login')
 
