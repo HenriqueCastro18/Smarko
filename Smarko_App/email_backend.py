@@ -22,12 +22,19 @@ class SendgridBackend(BaseEmailBackend):
                 if not message.to:
                     continue
 
+                html_content = None
+                if message.alternatives:
+                    for content, mimetype in message.alternatives:
+                        if mimetype == 'text/html':
+                            html_content = content
+                            break
+
                 msg = Mail(
                     from_email=message.from_email,
                     to_emails=message.to,
                     subject=message.subject,
                     plain_text_content=message.body,
-                    html_content=message.alternatives.get('text/html') if message.alternatives else None
+                    html_content=html_content
                 )
                 self.client.send(msg)
                 count += 1
