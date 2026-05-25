@@ -1,4 +1,3 @@
-import random
 import time
 import requests
 import urllib.parse
@@ -225,7 +224,7 @@ def login_view(request):
         if resp.status_code == 200:
             perfil_ref.update({'tentativas_falhas': 0, 'bloqueado_ate': None})
 
-            codigo = str(random.randint(100000, 999999))
+            codigo = str(secrets.randbelow(1000000)).zfill(6)
             request.session['codigo_2fa'] = codigo
             request.session['user_id_pre_auth'] = uid
             request.session['user_name_pre_auth'] = username_real
@@ -355,7 +354,11 @@ def password_reset_confirm_view(request):
     token_data = token_doc.to_dict()
     tempo_passado = time.time() - token_data.get('criado_em', 0)
 
-    if tempo_passado > 180:
+    if token_data.get('used_at'):
+        registrar_log_firebase("SISTEMA", token_data.get('email'), "Falha Reset - Token Já Utilizado", ip)
+        return render(request, 'Smarko_App/password_reset_confirm_fail.html')
+
+    if tempo_passado > 900:
         token_ref.delete()
         registrar_log_firebase("SISTEMA", token_data.get('email'), "Falha Reset - Token Expirado", ip)
         return render(request, 'Smarko_App/password_reset_confirm_fail.html')
@@ -379,11 +382,13 @@ def password_reset_confirm_view(request):
 
             if resp.status_code == 200:
                 uid = resp.json().get('localId')
+
+                token_ref.update({'used_at': time.time(), 'used_by_uid': uid})
+
                 if uid:
                     db.collection('perfis').document(uid).update({'senha_hash': make_password(nova_senha)})
 
                 registrar_log_firebase(uid, token_data.get('email'), "Senha Redefinida", ip)
-                token_ref.delete()
                 messages.success(request, "Senha atualizada com sucesso! Faça login.")
                 return redirect('login')
             else:
