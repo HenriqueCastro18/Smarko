@@ -4,43 +4,75 @@ from typing import Optional
 class EmailTemplate:
     @staticmethod
     def render_base(title: str, content: str, footer: str = "") -> str:
+        base_style = (
+            'font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; '
+            'border: 1px solid #e0e0e0; border-radius: 15px; overflow: hidden;'
+        )
+        header_style = (
+            'background: linear-gradient(135deg, #1a182e 0%, #252245 100%); '
+            'padding: 30px; text-align: center;'
+        )
+        footer_style = (
+            'background: #f0f0f0; padding: 15px; text-align: center; '
+            'font-size: 12px; color: #666;'
+        )
+        footer_html = (
+            f'<div style="{footer_style}">{footer}</div>'
+            if footer else ''
+        )
         return f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 15px; overflow: hidden;">
-            <div style="background: linear-gradient(135deg, #1a182e 0%, #252245 100%); padding: 30px; text-align: center;">
+        <div style="{base_style}">
+            <div style="{header_style}">
                 <h2 style="color: white; margin: 0;">{title}</h2>
             </div>
             <div style="padding: 30px; background: #f9f9f9;">
                 {content}
             </div>
-            {f'<div style="background: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666;">{footer}</div>' if footer else ''}
+            {footer_html}
         </div>
         """
 
     @staticmethod
     def render_2fa(code: str, name: Optional[str] = None) -> str:
         greeting = f"Hello {name}" if name else "Hello"
+        code_style = (
+            'background: white; padding: 20px; text-align: center; '
+            'border: 1px solid #ddd; margin: 20px 0;'
+        )
+        code_tag_style = (
+            'font-size: 24px; font-weight: bold; letter-spacing: 4px;'
+        )
         content = f"""
             <p>{greeting},</p>
             <p>Your authentication code:</p>
-            <div style="background: white; padding: 20px; text-align: center; border: 1px solid #ddd; margin: 20px 0;">
-                <code style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">{code}</code>
+            <div style="{code_style}">
+                <code style="{code_tag_style}">{code}</code>
             </div>
-            <p style="color: #666; font-size: 12px;">Valid for 2 minutes. Don't share this code.</p>
+            <p style="color: #666; font-size: 12px;">
+                Valid for 2 minutes. Don't share this code.
+            </p>
         """
         footer = "© Smarko Security - All rights reserved"
         return EmailTemplate.render_base("Smarko Login", content, footer)
 
     @staticmethod
     def render_password_reset(reset_link: str) -> str:
+        link_style = (
+            'background: #1a182e; color: white; padding: 12px 30px; '
+            'text-decoration: none; border-radius: 5px; display: inline-block;'
+        )
         content = f"""
             <p>Hello,</p>
-            <p>You requested a password reset. Click the link below to reset your password:</p>
+            <p>You requested a password reset.</p>
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{reset_link}" style="background: #1a182e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                <a href="{reset_link}" style="{link_style}">
                     Reset Password
                 </a>
             </div>
-            <p style="color: #666; font-size: 12px;">This link expires in 15 minutes. If you didn't request this, ignore this email.</p>
+            <p style="color: #666; font-size: 12px;">
+                This link expires in 15 minutes. If you didn't request this,
+                ignore this email.
+            </p>
         """
         footer = "© Smarko Security - All rights reserved"
         return EmailTemplate.render_base("Password Reset", content, footer)

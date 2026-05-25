@@ -177,14 +177,16 @@ def register_view(request: HttpRequest) -> HttpResponse:
             return render_error(request, 'Smarko_App/register.html', 'Preencha todos os campos.')
 
         if not (accepted_terms and accepted_privacy):
+            msg = 'Você deve aceitar Política de Privacidade e Termos de Uso.'
             return render_error(
                 request,
                 'Smarko_App/register.html',
-                'Você deve aceitar Política de Privacidade e Termos de Uso.'
+                msg
             )
 
         if not validate_password_match(senha, confirmacao):
-            return render_error(request, 'Smarko_App/register.html', 'As senhas não coincidem.')
+            msg = 'As senhas não coincidem.'
+            return render_error(request, 'Smarko_App/register.html', msg)
 
         try:
             user_record = firebase_auth.create_user(
@@ -204,25 +206,29 @@ def register_view(request: HttpRequest) -> HttpResponse:
                     'role': 'user'
                 })
 
+                user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
                 db.collection('consent_records').document(user_record.uid).set({
                     'firebase_uid': user_record.uid,
                     'email': email,
                     'version': 1,
                     'ip_address': get_client_ip(request),
-                    'user_agent': request.META.get('HTTP_USER_AGENT', '')[:500],
+                    'user_agent': user_agent,
                     'accepted_terms': accepted_terms == 'on',
                     'accepted_privacy': accepted_privacy == 'on',
                     'is_active': True,
                     'given_at': firestore.SERVER_TIMESTAMP
                 })
 
-                log_security_event(user_record.uid, usuario, 'Conta Criada', get_client_ip(request))
+                ip = get_client_ip(request)
+                log_security_event(user_record.uid, usuario, 'Conta Criada', ip)
 
-            messages.success(request, 'Conta criada com sucesso! Faça login para continuar.')
+            msg = 'Conta criada com sucesso! Faça login para continuar.'
+            messages.success(request, msg)
             return redirect('login')
         except Exception as e:
             logger.error(f"Registration error: {e}")
-            return render_error(request, 'Smarko_App/register.html', f'Erro ao registar: {str(e)}')
+            msg = f'Erro ao registar: {str(e)}'
+            return render_error(request, 'Smarko_App/register.html', msg)
 
     return render(request, 'Smarko_App/register.html')
 
@@ -346,19 +352,22 @@ def password_reset_confirm_view(request: HttpRequest) -> HttpResponse:
     token_doc = token_ref.get()
 
     if not token_doc.exists:
-        log_security_event('SISTEMA', 'Desconhecido', 'Falha Reset - Token Inexistente', ip)
+        event = 'Falha Reset - Token Inexistente'
+        log_security_event('SISTEMA', 'Desconhecido', event, ip)
         return render(request, 'Smarko_App/password_reset_confirm_fail.html')
 
     token_data = token_doc.to_dict()
     tempo_passado = time.time() - token_data.get('criado_em', 0)
 
     if token_data.get('used_at'):
-        log_security_event('SISTEMA', token_data.get('email'), 'Falha Reset - Token Já Utilizado', ip)
+        event = 'Falha Reset - Token Já Utilizado'
+        log_security_event('SISTEMA', token_data.get('email'), event, ip)
         return render(request, 'Smarko_App/password_reset_confirm_fail.html')
 
     if tempo_passado > 900:
         token_ref.delete()
-        log_security_event('SISTEMA', token_data.get('email'), 'Falha Reset - Token Expirado', ip)
+        event = 'Falha Reset - Token Expirado'
+        log_security_event('SISTEMA', token_data.get('email'), event, ip)
         return render(request, 'Smarko_App/password_reset_confirm_fail.html')
 
     if request.method == "GET":
@@ -378,28 +387,39 @@ def password_reset_confirm_view(request: HttpRequest) -> HttpResponse:
 
         try:
             api_key = getattr(settings, 'FIREBASE_WEB_API_KEY', '')
-            reset_url = f"https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key={api_key}"
-            resp = requests.post(reset_url, json={"oobCode": oob_code, "newPassword": nova_senha}, timeout=5)
+            base_url = 'https://identitytoolkit.googleapis.com/v1/accounts:resetPassword'
+            reset_url = f"{base_url}?key={api_key}"
+            payload = {"oobCode": oob_code, "newPassword": nova_senha}
+            resp = requests.post(reset_url, json=payload, timeout=5)
 
             if resp.status_code == 200:
                 uid = resp.json().get('localId')
                 token_ref.update({'used_at': time.time(), 'used_by_uid': uid})
 
                 if uid and db:
-                    db.collection('perfis').document(uid).update({'senha_hash': make_password(nova_senha)})
+                    pwd_hash = make_password(nova_senha)
+                    db.collection('perfis').document(uid).update(
+                        {'senha_hash': pwd_hash}
+                    )
 
                 log_security_event(uid, token_data.get('email'), 'Senha Redefinida', ip)
-                messages.success(request, 'Senha atualizada com sucesso! Faça login.')
+                msg = 'Senha atualizada com sucesso! Faça login.'
+                messages.success(request, msg)
                 return redirect('login')
             else:
-                error_msg = resp.json().get('error', {}).get('message', 'Unknown API error')
-                log_security_event('SISTEMA', token_data.get('email'), f'Falha Firebase API: {error_msg}', ip)
-                messages.error(request, f'Erro do servidor Firebase: {error_msg}')
+                error_data = resp.json().get('error', {})
+                error_msg = error_data.get('message', 'Unknown API error')
+                event = f'Falha Firebase API: {error_msg}'
+                log_security_event('SISTEMA', token_data.get('email'), event, ip)
+                msg = f'Erro do servidor Firebase: {error_msg}'
+                messages.error(request, msg)
         except Exception as e:
             logger.error(f"Password reset confirm error: {e}")
-            messages.error(request, f'Erro interno do sistema: {str(e)}')
+            msg = f'Erro interno do sistema: {str(e)}'
+            messages.error(request, msg)
 
-    return render(request, 'Smarko_App/password_reset_confirm.html', {'oobCode': oob_code})
+    context = {'oobCode': oob_code}
+    return render(request, 'Smarko_App/password_reset_confirm.html', context)
 
 
 def reset_password_sent_view(request: HttpRequest) -> HttpResponse:
@@ -453,7 +473,12 @@ def user_data_view(request: HttpRequest) -> HttpResponse:
         ('firebase_uid', '==', uid),
         ('status', '==', 'pending'),
     ]
-    deletion_requests = fetch_firestore_collection('account_deletion_requests', filters=filters, limit=1, db=db)
+    deletion_requests = fetch_firestore_collection(
+        'account_deletion_requests',
+        filters=filters,
+        limit=1,
+        db=db
+    )
     deletion_request = deletion_requests[0] if deletion_requests else None
 
     context = {
@@ -478,7 +503,12 @@ def export_user_data_view(request: HttpRequest) -> JsonResponse:
 
     filters = [('firebase_uid', '==', uid)]
     order_by = ('given_at', 'DESCENDING')
-    consents = fetch_firestore_collection('consent_records', filters=filters, order_by=order_by, db=db)
+    consents = fetch_firestore_collection(
+        'consent_records',
+        filters=filters,
+        order_by=order_by,
+        db=db
+    )
 
     data = {
         'export_date': timezone.now().isoformat(),
@@ -499,20 +529,28 @@ def export_user_data_view(request: HttpRequest) -> JsonResponse:
     }
 
     response = JsonResponse(data, safe=False)
-    response['Content-Disposition'] = f'attachment; filename="meus_dados_{uid}.json"'
+    filename = f'meus_dados_{uid}.json'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
 
-def save_consent_record(firebase_uid: str, email: str, request: HttpRequest, purposes: list = None) -> None:
+def save_consent_record(
+    firebase_uid: str,
+    email: str,
+    request: HttpRequest,
+    purposes: list = None
+) -> None:
     if not db or purposes is None:
         return
     version_info = get_current_policy_version()
-    db.collection('consent_records').document(f"{firebase_uid}_consent").set({
+    user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+    doc_id = f"{firebase_uid}_consent"
+    db.collection('consent_records').document(doc_id).set({
         'firebase_uid': firebase_uid,
         'email': email,
         'version': version_info.get('version'),
         'ip_address': get_client_ip(request),
-        'user_agent': request.META.get('HTTP_USER_AGENT', '')[:500],
+        'user_agent': user_agent,
         'accepted_terms': request.POST.get('accepted_terms') == 'on',
         'accepted_privacy': request.POST.get('accepted_privacy') == 'on',
         'purposes': purposes,
@@ -529,22 +567,19 @@ def register_consent_view(request: HttpRequest) -> JsonResponse:
 
         save_consent_record(firebase_uid, email, request, purposes)
         version_info = get_current_policy_version()
-        log_security_event(
-            firebase_uid,
-            email,
-            f"Consentimento LGPD Concedido v{version_info.get('version')}",
-            get_client_ip(request)
-        )
+        version = version_info.get('version')
+        event = f"Consentimento LGPD Concedido v{version}"
+        log_security_event(firebase_uid, email, event, get_client_ip(request))
 
         return JsonResponse({'status': 'success'})
     except Exception as e:
         logger.error(f"Register consent error: {e}")
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        msg = str(e)
+        return JsonResponse({'status': 'error', 'message': msg}, status=400)
 
 
-def get_purposes() -> list:
-    filters = []
-    return fetch_firestore_collection('data_purposes', filters=filters, db=db)
+def get_purposes() -> List[Dict[str, Any]]:
+    return fetch_firestore_collection('data_purposes', db=db)
 
 
 @firebase_login_required
@@ -559,7 +594,13 @@ def revoke_consent_view(request: HttpRequest) -> HttpResponse:
             ('is_active', '==', True),
         ]
         order_by = ('given_at', 'DESCENDING')
-        consent_docs = fetch_firestore_collection('consent_records', filters=filters, order_by=order_by, limit=1, db=db)
+        consent_docs = fetch_firestore_collection(
+            'consent_records',
+            filters=filters,
+            order_by=order_by,
+            limit=1,
+            db=db
+        )
 
         if not consent_docs:
             messages.error(request, 'Nenhum registro de consentimento encontrado.')
@@ -576,22 +617,27 @@ def revoke_consent_view(request: HttpRequest) -> HttpResponse:
             'is_active': False,
         })
 
-        log_security_event(uid, username, 'Consentimento Revogado', get_client_ip(request))
+        event = 'Consentimento Revogado'
+        log_security_event(uid, username, event, get_client_ip(request))
         html_msg = EmailTemplate.render_consent_revoked(username)
 
+        subject = "Smarko - Confirmação de Revogação de Consentimento"
+        body = f"Seu consentimento foi revogado em {revoked_at}"
         send_mail(
-            "Smarko - Confirmação de Revogação de Consentimento",
-            f"Seu consentimento foi revogado em {revoked_at}",
+            subject,
+            body,
             settings.DEFAULT_FROM_EMAIL,
             [email],
             html_message=html_msg
         )
 
-        messages.success(request, 'Seu consentimento foi revogado com sucesso.')
+        msg = 'Seu consentimento foi revogado com sucesso.'
+        messages.success(request, msg)
         return redirect('user_data')
     except Exception as e:
         logger.error(f"Revoke consent error: {e}")
-        messages.error(request, f'Erro ao revogar consentimento: {str(e)}')
+        msg = f'Erro ao revogar consentimento: {str(e)}'
+        messages.error(request, msg)
         return redirect('user_data')
 
 
@@ -630,12 +676,15 @@ def request_account_deletion_view(request: HttpRequest) -> HttpResponse:
             html_message=html_msg
         )
 
-        log_security_event(uid, username, 'Exclusão de Conta Solicitada (30 dias)', get_client_ip(request))
-        messages.success(request, 'Solicitação de exclusão enviada. Você tem 30 dias para cancelar.')
+        event = 'Exclusão de Conta Solicitada (30 dias)'
+        log_security_event(uid, username, event, get_client_ip(request))
+        msg = 'Solicitação de exclusão enviada. Você tem 30 dias para cancelar.'
+        messages.success(request, msg)
         return redirect('user_data')
     except Exception as e:
         logger.error(f"Request account deletion error: {e}")
-        messages.error(request, f'Erro ao solicitar exclusão: {str(e)}')
+        msg = f'Erro ao solicitar exclusão: {str(e)}'
+        messages.error(request, msg)
         return redirect('user_data')
 
 
@@ -650,7 +699,12 @@ def cancel_account_deletion_view(request: HttpRequest) -> HttpResponse:
 
     try:
         filters = [('confirmation_token', '==', token)]
-        deletion_docs = fetch_firestore_collection('account_deletion_requests', filters=filters, limit=1, db=db)
+        deletion_docs = fetch_firestore_collection(
+            'account_deletion_requests',
+            filters=filters,
+            limit=1,
+            db=db
+        )
 
         if not deletion_docs:
             messages.error(request, 'Token não encontrado.')
@@ -659,10 +713,12 @@ def cancel_account_deletion_view(request: HttpRequest) -> HttpResponse:
         deletion_data = deletion_docs[0]
 
         if deletion_data.get('status') != 'pending':
-            messages.error(request, 'Esta solicitação já foi processada.')
+            msg = 'Esta solicitação já foi processada.'
+            messages.error(request, msg)
             return redirect('login')
 
-        db.collection('account_deletion_requests').document(f"{deletion_data.get('firebase_uid')}_{token}").update({
+        uid_token = f"{deletion_data.get('firebase_uid')}_{token}"
+        db.collection('account_deletion_requests').document(uid_token).update({
             'status': 'canceled'
         })
 
@@ -673,11 +729,13 @@ def cancel_account_deletion_view(request: HttpRequest) -> HttpResponse:
             ip
         )
 
-        messages.success(request, 'Exclusão de conta cancelada. Sua conta está segura.')
+        msg = 'Exclusão de conta cancelada. Sua conta está segura.'
+        messages.success(request, msg)
         return redirect('login')
     except Exception as e:
         logger.error(f"Cancel account deletion error: {e}")
-        messages.error(request, f'Erro ao cancelar exclusão: {str(e)}')
+        msg = f'Erro ao cancelar exclusão: {str(e)}'
+        messages.error(request, msg)
         return redirect('login')
 
 
@@ -709,12 +767,14 @@ def update_consent_view(request: HttpRequest) -> HttpResponse:
             version_info = get_current_policy_version()
 
             if db:
-                db.collection('consent_records').document(f"{uid}_consent").set({
+                user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+                doc_id = f"{uid}_consent"
+                db.collection('consent_records').document(doc_id).set({
                     'firebase_uid': uid,
                     'email': email,
                     'version': version_info.get('version'),
                     'ip_address': get_client_ip(request),
-                    'user_agent': request.META.get('HTTP_USER_AGENT', '')[:500],
+                    'user_agent': user_agent,
                     'accepted_terms': accepted_terms,
                     'accepted_privacy': accepted_privacy,
                     'is_active': True,
@@ -722,7 +782,9 @@ def update_consent_view(request: HttpRequest) -> HttpResponse:
                     'given_at': firestore.SERVER_TIMESTAMP,
                 })
 
-                log_security_event(uid, email, f"Consentimento Atualizado v{version_info.get('version')}", get_client_ip(request))
+                version = version_info.get('version')
+                event = f"Consentimento Atualizado v{version}"
+                log_security_event(uid, email, event, get_client_ip(request))
 
             if 'pending_consent_uid' in request.session:
                 del request.session['pending_consent_uid']
