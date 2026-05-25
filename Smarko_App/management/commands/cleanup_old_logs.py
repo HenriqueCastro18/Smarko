@@ -78,7 +78,6 @@ class Command(BaseCommand):
             )
             return
 
-        # ========== Django SQLite Cleanup ==========
         try:
             old_logs_django = LogSeguranca.objects.filter(
                 data_hora__lt=cutoff_date

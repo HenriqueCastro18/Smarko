@@ -113,7 +113,6 @@ if not firebase_admin._apps:
     try:
         cred = None
 
-        # Tentativa 1: Variáveis de ambiente individuais (Vercel em produção)
         project_id = os.getenv('FIREBASE_PROJECT_ID')
         client_email = os.getenv('FIREBASE_CLIENT_EMAIL')
         private_key = os.getenv('FIREBASE_PRIVATE_KEY')
@@ -132,12 +131,10 @@ if not firebase_admin._apps:
             }
             cred = credentials.Certificate(cred_dict)
 
-        # Tentativa 2: JSON completo em variável de ambiente
         elif os.getenv('FIREBASE_SERVICE_ACCOUNT'):
             cred_dict = json.loads(os.getenv('FIREBASE_SERVICE_ACCOUNT'), strict=False)
             cred = credentials.Certificate(cred_dict)
 
-        # Tentativa 3: Arquivo local (desenvolvimento)
         else:
             cred_path = os.path.join(BASE_DIR, 'serviceAccountKey.json')
             if os.path.exists(cred_path):
