@@ -16,7 +16,6 @@ from firebase_admin import firestore, auth as firebase_auth
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.http import require_http_methods
 
-# [Itens 3.4 e 3.5] Conexão Firestore segura para armazenamento de perfis e logs.
 try:
     db = firestore.client()
 except Exception:
