@@ -28,19 +28,18 @@ def get_client_ip(request):
     return request.META.get('REMOTE_ADDR')
 
 def registrar_log_firebase(uid, username, evento, ip):
+    if not db:
+        return
     try:
-        if db:
-            db.collection('logs_seguranca').add({
-                'usuario_id': uid,
-                'usuario_nome': username,
-                'evento': evento,
-                'ip': ip,
-                'data_hora': firestore.SERVER_TIMESTAMP
-            })
-        else:
-            print(f"[LOG - Firebase unavailable] {evento} - {username} - {ip}")
+        db.collection('logs_seguranca').add({
+            'usuario_id': uid,
+            'usuario_nome': username,
+            'evento': evento,
+            'ip': ip,
+            'data_hora': firestore.SERVER_TIMESTAMP
+        })
     except Exception as e:
-        print(f"Erro ao salvar log no Firebase: {e}")
+        print(f"Failed to log {evento}: {e}")
 
 def firebase_login_required(view_func):
     @wraps(view_func)
@@ -49,6 +48,43 @@ def firebase_login_required(view_func):
             return redirect('login')
         return view_func(request, *args, **kwargs)
     return _wrapped_view
+
+def user_has_valid_consent(uid):
+    if not db:
+        return True
+    try:
+        docs = db.collection('consent_records').where('firebase_uid', '==', uid).where('is_active', '==', True).limit(1).stream()
+        return next(iter(docs), None) is not None
+    except:
+        return False
+
+def _render_2fa_email(code, name):
+    greeting = f"Hello {name}" if name else "Hello"
+    return f"""
+    <div style="font-family: Arial; max-width: 500px; margin: 0 auto;">
+        <div style="background: #1a182e; color: white; padding: 20px; text-align: center;">
+            <h2>Smarko Login</h2>
+        </div>
+        <div style="padding: 30px; background: #f9f9f9;">
+            <p>{greeting},</p>
+            <p>Your authentication code:</p>
+            <div style="background: white; padding: 20px; text-align: center; border: 1px solid #ddd; margin: 20px 0;">
+                <code style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">{code}</code>
+            </div>
+            <p style="color: #666; font-size: 12px;">Valid for 2 minutes. Don't share this code.</p>
+        </div>
+    </div>
+    """
+
+def send_2fa_email(email, code, name=None):
+    body = f"Your login code: {code}\n\nValid for 2 minutes."
+    send_mail(
+        "Smarko - Login Code",
+        body,
+        settings.DEFAULT_FROM_EMAIL,
+        [email],
+        html_message=_render_2fa_email(code, name)
+    )
 
 def register_view(request):
     if request.method == "POST":
@@ -169,26 +205,7 @@ def login_view(request):
             request.session['user_email_pre_auth'] = email_login
             request.session['codigo_2fa_timestamp'] = time.time()
 
-            unique_id = time.time()
-
-            html_msg = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                <div style="background: linear-gradient(135deg, #1a182e 0%, #252245 100%); padding: 25px; text-align: center;">
-                    <h2 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px;">Smarko Security</h2>
-                </div>
-                <div style="padding: 40px 30px; background-color: #ffffff; text-align: center;">
-                    <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Olá, <strong>{username_real}</strong></p>
-                    <p style="font-size: 15px; color: #666666; margin-bottom: 30px;">Utilize o código de autorização abaixo para prosseguir:</p>
-                    <div style="background-color: #f8f9fa; padding: 15px 30px; border-radius: 8px; display: inline-block; margin-bottom: 30px; border: 2px dashed #1a182e;">
-                        <span style="letter-spacing: 8px; font-size: 34px; font-weight: bold; color: #1a182e;">{codigo}</span>
-                    </div>
-                    <p style="font-size: 13px; color: #dc3545; font-weight: bold;">⚠️ Este código expira em 2 minutos.</p>
-                </div>
-                <div style="display: none; visibility: hidden; opacity: 0; font-size: 1px;">{unique_id}</div>
-            </div>
-            """
-
-            send_mail("Smarko Security - Código de Acesso 🔐", f"Código: {codigo}", settings.DEFAULT_FROM_EMAIL, [email_login], html_message=html_msg)
+            send_2fa_email(email_login, codigo, username_real)
             return redirect('verificar_2fa')
         else:
             tentativas = p_data.get('tentativas_falhas', 0) + 1
@@ -220,17 +237,8 @@ def verificar_2fa_view(request):
             request.session['email'] = request.session.get('user_email_pre_auth')
             registrar_log_firebase(request.session['uid'], request.session['username'], "Login Sucesso", get_client_ip(request))
 
-            # [LGPD] Verificar se usuário tem consentimento válido
-            try:
-                consent_docs = db.collection('consent_records').where('firebase_uid', '==', uid).where('is_active', '==', True).limit(1).stream()
-                consent_exists = next(iter(consent_docs), None) is not None
-            except:
-                consent_exists = False
-
-            if not consent_exists:
-                # Usuário precisa aceitar termos - redirecionar para revalidação
+            if not user_has_valid_consent(uid):
                 request.session['pending_consent_uid'] = uid
-                messages.warning(request, "Por favor, aceite os termos de privacidade para continuar.")
                 return redirect('update_consent')
 
             return redirect('home')
@@ -254,7 +262,6 @@ def reset_password_view(request):
             oob_code = urllib.parse.parse_qs(parsed_url.query).get('oobCode', [None])[0]
 
             if oob_code:
-                # Agora gravamos apenas o email e o tempo. Não precisamos do 'ja_aberto'
                 db.collection('tokens_recuperacao').document(oob_code).set({
                     'email': email, 'criado_em': time.time()
                 })
@@ -269,35 +276,28 @@ def reset_password_view(request):
                     </div>
                     <div style="padding: 40px; text-align: center; background: #ffffff;">
                         <p style="color: #333; font-size: 16px;">Pedido de redefinição de senha recebido.</p>
-                        <p style="color: #dc3545; font-weight: bold; margin-bottom: 30px;">⚠️ Válido por 10 minutos.</p>
+                        <p style="color: #dc3545; font-weight: bold; margin-bottom: 30px;">Valid for 10 minutes.</p>
                         <a href="{meu_link}" style="background: #1a182e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Redefinir Senha</a>
                     </div>
                     <div style="display: none; visibility: hidden; opacity: 0; font-size: 1px;">{unique_id}</div>
                 </div>
                 """
-                # Enviar email com tratamento de erro explícito
                 try:
-                    emails_sent = send_mail(
-                        "Smarko - Redefinição de Senha",
-                        f"Link: {meu_link}",
+                    send_mail(
+                        "Smarko - Password Reset",
+                        f"Reset link: {meu_link}",
                         settings.DEFAULT_FROM_EMAIL,
                         [email],
                         html_message=html_msg
                     )
-                    if emails_sent == 0:
-                        print(f"⚠️ [RESET] Email NÃO foi enviado para {email}")
-                        messages.warning(request, "Verifique seu email (pode estar em spam)")
-                    else:
-                        print(f"✅ [RESET] Email enviado com sucesso para {email}")
-                except Exception as email_error:
-                    print(f"❌ [RESET] Erro ao enviar email: {email_error}")
-                    messages.error(request, f"Erro ao enviar email: {str(email_error)}")
+                except Exception as e:
+                    print(f"Failed to send reset email: {e}")
 
                 registrar_log_firebase("SISTEMA", email, "Reset Solicitado", ip)
                 return redirect('password_reset_done')
         except Exception as e:
-            print(f"❌ [RESET] Erro no Reset: {e}")
-            messages.error(request, f"Erro: {str(e)}")
+            print(f"Reset error: {e}")
+            messages.error(request, f"Error: {str(e)}")
             return redirect('password_reset_done')
     return render(request, 'Smarko_App/password_reset.html')
 
@@ -319,7 +319,7 @@ def password_reset_confirm_view(request):
     tempo_passado = time.time() - token_data.get('criado_em', 0)
 
     if tempo_passado > 180:
-        token_ref.delete() # Se expirou, limpamos logo a base de dados
+        token_ref.delete()
         registrar_log_firebase("SISTEMA", token_data.get('email'), "Falha Reset - Token Expirado", ip)
         return render(request, 'Smarko_App/password_reset_confirm_fail.html')
 
@@ -342,19 +342,15 @@ def password_reset_confirm_view(request):
             
             if resp.status_code == 200:
                 uid = resp.json().get('localId')
-                # SINCRONIZAÇÃO: Atualiza hash no Firestore. [Item 1.1]
                 if uid:
                     db.collection('perfis').document(uid).update({'senha_hash': make_password(nova_senha)})
 
                 registrar_log_firebase(uid, token_data.get('email'), "Senha Redefinida", ip)
-                
-                # O TOKEN SÓ É ELIMINADO/QUEIMADO AQUI NO SUCESSO! [Item 2.4]
                 token_ref.delete() 
                 messages.success(request, "Senha atualizada com sucesso! Faça login.")
                 return redirect('login')
             else:
-                # Se falhar (ex: chave da Vercel em falta), mostra o erro real em vez de bloquear o token
-                error_msg = resp.json().get('error', {}).get('message', 'Erro Desconhecido API')
+                error_msg = resp.json().get('error', {}).get('message', 'Unknown API error')
                 registrar_log_firebase("SISTEMA", token_data.get('email'), f"Falha Firebase API: {error_msg}", ip)
                 messages.error(request, f"Erro do servidor Firebase: {error_msg}")
                 return render(request, 'Smarko_App/password_reset_confirm.html', {'oobCode': oob_code})
@@ -384,28 +380,21 @@ def logout_view(request):
 def ping_view(request):
     if request.session.get('uid'):
         request.session.modified = True
-    return JsonResponse({'status': 'vivo'})
-
-# ========== CONFORMIDADE LGPD ==========
+    return JsonResponse({'status': 'alive'})
 
 def get_current_policy_version():
-    """Obter versão atual da política (hardcoded)"""
     return {
         'version': '1.0',
         'effective_date': '2025-01-01',
     }
 
 def privacy_policy_view(request):
-    """Exibe política de privacidade com versão"""
     version = get_current_policy_version()
-    context = {
-        'policy_version': version,
-    }
+    context = {'policy_version': version}
     return render(request, 'Smarko_App/privacy_policy.html', context)
 
 @firebase_login_required
 def user_data_view(request):
-    """Exibe dados pessoais do usuário logado"""
     uid = request.session.get('uid')
     email = request.session.get('email')
 
@@ -447,7 +436,6 @@ def user_data_view(request):
 
 @firebase_login_required
 def export_user_data_view(request):
-    """Exporta dados pessoais em formato JSON"""
     uid = request.session.get('uid')
     email = request.session.get('email')
 
@@ -492,7 +480,6 @@ def export_user_data_view(request):
 
 @require_http_methods(["POST"])
 def register_consent_view(request):
-    """Registra consentimento do usuário durante registro"""
     try:
         firebase_uid = request.POST.get('firebase_uid')
         email = request.POST.get('email')
@@ -526,7 +513,6 @@ def register_consent_view(request):
 @firebase_login_required
 @require_http_methods(["POST"])
 def revoke_consent_view(request):
-    """Revoga consentimento do usuário e envia email de confirmação"""
     uid = request.session.get('uid')
     email = request.session.get('email')
     username = request.session.get('username')
@@ -580,7 +566,6 @@ def revoke_consent_view(request):
 @firebase_login_required
 @require_http_methods(["POST"])
 def request_account_deletion_view(request):
-    """Solicita exclusão de conta com período de 30 dias"""
     uid = request.session.get('uid')
     email = request.session.get('email')
     username = request.session.get('username')
@@ -604,7 +589,7 @@ def request_account_deletion_view(request):
         html_msg = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: #dc3545; padding: 25px; text-align: center; color: white;">
-                <h2>⚠️ Solicitação de Exclusão de Conta</h2>
+                <h2>Account Deletion Request</h2>
             </div>
             <div style="padding: 40px; background: white;">
                 <p>Olá {username},</p>
@@ -620,7 +605,7 @@ def request_account_deletion_view(request):
         """
 
         send_mail(
-            "⚠️ Smarko - Exclusão de Conta Solicitada",
+            "Smarko - Account Deletion Request",
             f"Sua conta será deletada em 30 dias",
             settings.DEFAULT_FROM_EMAIL,
             [email],
@@ -637,7 +622,6 @@ def request_account_deletion_view(request):
 
 @require_http_methods(["GET"])
 def cancel_account_deletion_view(request):
-    """Cancela a exclusão de conta"""
     token = request.GET.get('token')
 
     if not token:
@@ -676,7 +660,6 @@ def cancel_account_deletion_view(request):
         return redirect('login')
 
 def update_consent_view(request):
-    """Revalidação de consentimento para usuários antigos"""
     uid = request.session.get('pending_consent_uid')
     email = request.session.get('email')
 
@@ -698,7 +681,6 @@ def update_consent_view(request):
 
     if request.method == "POST":
         try:
-            # Get email from session (more secure than POST)
             accepted_privacy = request.POST.get('accepted_privacy') == 'on'
             accepted_terms = request.POST.get('accepted_terms') == 'on'
 
@@ -720,7 +702,6 @@ def update_consent_view(request):
             version_info = get_current_policy_version()
 
 
-            # Salvar consentimento em Firestore
             db.collection('consent_records').document(f"{uid}_consent").set({
                 'firebase_uid': uid,
                 'email': email,
@@ -736,11 +717,10 @@ def update_consent_view(request):
 
             registrar_log_firebase(uid, email, f"Consentimento Atualizado v{version_info.get('version')}", get_client_ip(request))
 
-            # Clear pending_consent_uid from session
             if 'pending_consent_uid' in request.session:
                 del request.session['pending_consent_uid']
 
-            messages.success(request, "✅ Consentimento aceito com sucesso! Bem-vindo ao Smarko.")
+            messages.success(request, "Consent saved successfully. Welcome to Smarko.")
             return redirect('home')
         except Exception as e:
             messages.error(request, f"Erro ao atualizar consentimento: {str(e)}")
