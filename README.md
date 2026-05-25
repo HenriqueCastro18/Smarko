@@ -10,7 +10,7 @@
 
 ### Poster
 
-![](./docs/smarko_poster_final.pdf)
+<img src="./docs/smarko_poster_final.pdf" width="400" alt="Poster">
 
 
 ---
