@@ -16,7 +16,14 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 WHITENOISE_USE_FINDERS = True
 
-ALLOWED_HOSTS = ['smarkoo.vercel.app', 'smarko.app', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    'smarkoo.vercel.app',
+    'smarko.app',
+    'smarko-tfc.vercel.app',
+    '*.vercel.app',
+    'localhost',
+    '127.0.0.1'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
