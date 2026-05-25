@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write only to authenticated users
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is accessing their own data
+    function isUserData(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Validate user ID format (Firebase UID is 28 chars)
+    function isValidUID(uid) {
+      return uid.size() == 28;
+    }
+
+    // PERFIS COLLECTION - User profiles
+    match /perfis/{userId} {
+      allow read: if isAuthenticated() && isUserData(userId);
+      allow write: if isAuthenticated() && isUserData(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email is string
+        && isValidEmail(request.resource.data.email);
+      allow delete: if isAuthenticated() && isUserData(userId);
+    }
+
+    // CONSENT RECORDS - GDPR/LGPD consent tracking
+    match /consent_records/{recordId} {
+      allow read: if isAuthenticated() && (
+        isUserData(resource.data.firebase_uid) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.is_admin == true
+      );
+      allow create: if isAuthenticated()
+        && request.resource.data.firebase_uid == request.auth.uid
+        && isValidEmail(request.resource.data.email)
+        && request.resource.data.version is number
+        && request.resource.data.given_at is timestamp
+        && request.resource.data.is_active == true;
+      allow update: if isAuthenticated() && isUserData(resource.data.firebase_uid)
+        && request.resource.data.firebase_uid == resource.data.firebase_uid
+        && (request.resource.data.revoked_at is timestamp || request.resource.data.revoked_at == null);
+      allow delete: if false; // Prevent deletion (keep audit trail)
+    }
+
+    // ACCOUNT DELETION REQUESTS - GDPR/LGPD right to be forgotten
+    match /account_deletion_requests/{requestId} {
+      allow read: if isAuthenticated() && (
+        isUserData(resource.data.firebase_uid) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.is_admin == true
+      );
+      allow create: if isAuthenticated()
+        && request.resource.data.firebase_uid == request.auth.uid
+        && isValidEmail(request.resource.data.email)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.requested_at is timestamp
+        && request.resource.data.deletion_scheduled_for is timestamp;
+      allow update: if isAuthenticated() && isUserData(resource.data.firebase_uid)
+        && request.resource.data.firebase_uid == resource.data.firebase_uid
+        && request.resource.data.status in ['pending', 'canceled', 'completed'];
+      allow delete: if false; // Prevent deletion (keep audit trail)
+    }
+
+    // PASSWORD RESET TOKENS - Time-limited, one-time use only
+    match /password_reset_tokens/{tokenId} {
+      allow read: if false; // No direct read from client
+      allow create: if request.auth != null
+        && isValidEmail(request.resource.data.email)
+        && request.resource.data.criado_em is number
+        && request.resource.data.used_at == null;
+      allow update: if false; // Use backend to update (mark as used)
+      allow delete: if false; // Backend handles cleanup
+    }
+
+    // BRUTE FORCE PROTECTION - Track login attempts by IP
+    match /brute_force_protection/{ipAddress} {
+      allow read: if false; // Backend only
+      allow write: if false; // Backend only
+      allow delete: if false; // Backend only
+    }
+
+    // 2FA CODES - Temporary codes (should auto-expire)
+    match /two_factor_codes/{codeId} {
+      allow read: if false; // Backend only
+      allow write: if false; // Backend only
+      allow delete: if false; // Backend only
+    }
+
+    // SECURITY LOGS - Audit trail (immutable)
+    match /security_logs/{logId} {
+      allow read: if isAuthenticated() && (
+        isUserData(resource.data.firebase_uid) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.is_admin == true
+      );
+      allow create: if false; // Backend only
+      allow update: if false; // Immutable audit trail
+      allow delete: if false; // Immutable audit trail
+    }
+
+    // ADMIN COLLECTION - System administrators only
+    match /admins/{adminId} {
+      allow read: if isAuthenticated() &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.is_admin == true;
+      allow write: if false; // Backend only (CLI scripts)
+      allow delete: if false; // Backend only
+    }
+
+    // Deny all other collections by default (whitelist approach)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
