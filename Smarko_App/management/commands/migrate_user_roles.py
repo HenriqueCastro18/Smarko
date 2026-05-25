@@ -27,11 +27,9 @@ class Command(BaseCommand):
                 username = doc_data.get('username', '')
                 existing_role = doc_data.get('role')
 
-                # Se nao tem role, adiciona 'user'
                 if not existing_role:
                     users_no_role += 1
 
-                    # Se eh HenriqueCastro, adiciona como 'developer'
                     if username == 'HenriqueCastro':
                         perfis_ref.document(doc.id).update({'role': 'developer'})
                         self.stdout.write(

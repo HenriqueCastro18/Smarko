@@ -8,6 +8,13 @@
 
 ---
 
+### Poster
+
+<img src="./docs/smarko_poster.jpg" width="1200" alt="Poster">
+
+
+---
+
 ## ⚖️ Conformidade e Privacidade (LGPD)
 
 **Smarko 2.0 implementa conformidade total com LGPD (Lei Geral de Proteção de Dados Pessoais):**
@@ -127,7 +134,7 @@ O projeto utiliza tecnologias de ponta para garantir performance, integridade e 
   - Operações de consentimento LGPD
   - Revogação de consentimento
   - Solicitação de exclusão de dados
-* Cada log contém: `usuario_id`, `usuario_nome`, `evento`, `ip`, `data_hora` (servidor)
+* Cada log contém: `usuario_id`, `usuario_nome`, `evento`, `ip`, `data_hora`
 
 ### 7. Controle de Acesso por Papel (RBAC)
 * **3 papéis:** `user` (padrão), `developer`, `admin`

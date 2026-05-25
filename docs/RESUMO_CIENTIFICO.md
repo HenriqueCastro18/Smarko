@@ -1,7 +1,5 @@
 # Resumo Científico - Sistema Smarko 2.0
 
-## Resumo (200-300 palavras)
-
 **Smarko 2.0** é um sistema web de autenticação defensiva com conformidade integral à Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018). O projeto implementa camadas múltiplas de segurança criptográfica e controles de acesso para proteger credenciais e dados pessoais contra ataques modernos, enquanto garante aos usuários direitos de consulta, portabilidade e exclusão de dados conforme mandatório pela legislação brasileira.
 
 **Objetivo:** Desenvolver uma arquitetura de autenticação que combina padrões de segurança da indústria com conformidade regulatória, demonstrando a viabilidade técnica de integrar proteção de dados desde o design (privacy-by-design).
