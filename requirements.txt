@@ -9,4 +9,4 @@ requests==2.32.3
 whitenoise==6.9.0
 gunicorn==23.0.0
 sendgrid==6.10.0
-django-sendgrid-v5==1.11.1
+django-sendgrid==1.4.1
