@@ -114,7 +114,7 @@ CSRF_COOKIE_HTTPONLY = False
 
 EMAIL_BACKEND = "Smarko_App.email_backend.SendgridBackend"
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
-DEFAULT_FROM_EMAIL = "Smarko Security <noreply@smarko.app>"
+DEFAULT_FROM_EMAIL = "hccastro04@gmail.com"
 
 FIREBASE_WEB_API_KEY = os.getenv('FIREBASE_API_KEY')
 
