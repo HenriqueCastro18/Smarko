@@ -3,7 +3,7 @@ import requests
 import urllib.parse
 import secrets
 import logging
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -610,8 +610,6 @@ def revoke_consent_view(request: HttpRequest) -> HttpResponse:
             return redirect('user_data')
 
         revoked_at = timezone.now()
-        consent_doc = consent_docs[0]
-
         db.collection('consent_records').document(f"{uid}_consent").update({
             'revoked_at': revoked_at,
             'is_active': False,
@@ -665,12 +663,11 @@ def request_account_deletion_view(request: HttpRequest) -> HttpResponse:
             'status': 'pending'
         })
 
-        cancel_url = f"https://smarkoo.vercel.app/cancel-deletion/?token={token}"
         html_msg = EmailTemplate.render_account_deletion(email, 30)
 
         send_mail(
             "Smarko - Account Deletion Request",
-            f"Sua conta será deletada em 30 dias",
+            "Sua conta será deletada em 30 dias",
             settings.DEFAULT_FROM_EMAIL,
             [email],
             html_message=html_msg

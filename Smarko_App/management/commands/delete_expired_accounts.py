@@ -2,8 +2,6 @@ import logging
 from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-import firebase_admin
-from firebase_admin import firestore
 
 from Smarko_App.models import AccountDeletionRequest
 from Smarko import settings
