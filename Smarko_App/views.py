@@ -131,16 +131,20 @@ def authenticate_with_firebase(email: str, password: str) -> Optional[Dict[str, 
 def send_2fa_email(email: str, code: str, name: Optional[str] = None) -> None:
     body = f"Your login code: {code}\n\nValid for 2 minutes."
     html_message = EmailTemplate.render_2fa(code, name)
+    logger.info(f"DEBUG: Starting 2FA email send to {email}")
+    logger.info(f"DEBUG: EMAIL_HOST={settings.EMAIL_HOST}, EMAIL_PORT={settings.EMAIL_PORT}, EMAIL_USE_TLS={settings.EMAIL_USE_TLS}")
+    logger.info(f"DEBUG: EMAIL_HOST_USER={settings.EMAIL_HOST_USER}, DEFAULT_FROM_EMAIL={settings.DEFAULT_FROM_EMAIL}")
     try:
-        send_mail(
+        result = send_mail(
             "Smarko - Login Code",
             body,
             settings.DEFAULT_FROM_EMAIL,
             [email],
             html_message=html_message
         )
+        logger.info(f"2FA email sent successfully to {email}, result: {result}")
     except Exception as e:
-        logger.error(f"Failed to send 2FA email: {e}")
+        logger.error(f"Failed to send 2FA email to {email}: {e}", exc_info=True)
 
 
 def send_password_reset_email(email: str, reset_link: str) -> None:
