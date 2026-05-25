@@ -3,7 +3,6 @@ import time
 import requests
 import urllib.parse
 import secrets
-import json
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -18,7 +17,7 @@ from django.views.decorators.http import require_http_methods
 
 try:
     db = firestore.client()
-except Exception:
+except Exception as _:
     db = None
 
 def get_client_ip(request):
@@ -55,7 +54,7 @@ def user_has_valid_consent(uid):
     try:
         docs = db.collection('consent_records').where('firebase_uid', '==', uid).where('is_active', '==', True).limit(1).stream()
         return next(iter(docs), None) is not None
-    except:
+    except Exception:
         return False
 
 def _render_2fa_email(code, name):
@@ -167,7 +166,8 @@ def login_view(request):
                     user_record = firebase_auth.get_user_by_email(email_login)
                     uid = user_record.uid
                     username_real = user_record.display_name
-                except: pass
+                except Exception:
+                    pass
             else:
                 docs = db.collection('perfis').where('username', '==', identificador).limit(1).get()
                 if docs:
@@ -367,7 +367,7 @@ def home_view(request):
     try:
         perfil = db.collection('perfis').document(uid).get().to_dict() or {}
         user_role = perfil.get('role', 'user')
-    except:
+    except Exception:
         user_role = 'user'
 
     context = {'user_role': user_role}
@@ -400,19 +400,19 @@ def user_data_view(request):
 
     try:
         perfil = db.collection('perfis').document(uid).get().to_dict() or {}
-    except:
+    except Exception:
         perfil = {}
 
     try:
         consent_docs = db.collection('consent_records').where('firebase_uid', '==', uid).where('is_active', '==', True).order_by('given_at', direction=firestore.Query.DESCENDING).stream()
         consents = [doc.to_dict() for doc in consent_docs]
-    except:
+    except Exception:
         consents = []
 
     try:
         logs = db.collection('logs_seguranca').where('usuario_id', '==', uid).limit(10).stream()
         audit_logs = [log.to_dict() for log in logs]
-    except:
+    except Exception:
         audit_logs = []
 
     try:
@@ -420,7 +420,7 @@ def user_data_view(request):
         deletion_request = next(iter(deletion_docs), None)
         if deletion_request:
             deletion_request = deletion_request.to_dict()
-    except:
+    except Exception:
         deletion_request = None
 
     context = {
@@ -441,19 +441,19 @@ def export_user_data_view(request):
 
     try:
         perfil = db.collection('perfis').document(uid).get().to_dict()
-    except:
+    except Exception:
         perfil = {}
 
     try:
         logs_stream = db.collection('logs_seguranca').where('usuario_id', '==', uid).stream()
         logs = [log.to_dict() for log in logs_stream]
-    except:
+    except Exception:
         logs = []
 
     try:
         consent_docs = db.collection('consent_records').where('firebase_uid', '==', uid).order_by('given_at', direction=firestore.Query.DESCENDING).stream()
         consents = [doc.to_dict() for doc in consent_docs]
-    except:
+    except Exception:
         consents = []
 
     data = {
@@ -506,7 +506,7 @@ def register_consent_view(request):
             get_client_ip(request)
         )
 
-        return JsonResponse({'status': 'success', 'consent_id': consent.id})
+        return JsonResponse({'status': 'success'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
@@ -670,7 +670,7 @@ def update_consent_view(request):
         try:
             purpose_docs = db.collection('data_purposes').stream()
             purposes = [doc.to_dict() for doc in purpose_docs]
-        except:
+        except Exception:
             purposes = []
 
         context = {
@@ -689,7 +689,7 @@ def update_consent_view(request):
                 try:
                     purpose_docs = db.collection('data_purposes').stream()
                     purposes = [doc.to_dict() for doc in purpose_docs]
-                except:
+                except Exception:
                     purposes = []
 
                 messages.error(request, "Você deve aceitar a Política de Privacidade e os Termos de Uso.")
@@ -727,7 +727,7 @@ def update_consent_view(request):
             try:
                 purpose_docs = db.collection('data_purposes').stream()
                 purposes = [doc.to_dict() for doc in purpose_docs]
-            except:
+            except Exception:
                 purposes = []
             return render(request, 'Smarko_App/update_consent.html', {
                 'purposes': purposes,
