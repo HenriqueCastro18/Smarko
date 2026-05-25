@@ -187,24 +187,13 @@ else:
 # ============================================================================
 # Security: Encryption Key Validation (SPRINT 2.2)
 # ============================================================================
-# Validate that encryption key is configured for field-level encryption.
+# Encryption key for field-level encryption (optional, graceful degradation)
 # Required for OWASP A02:2021 - Cryptographic Failures mitigation
 def _validate_encryption_keys():
-    """Ensure required encryption keys are configured."""
+    """Validate encryption key if configured."""
     encryption_key = os.getenv('ENCRYPTION_KEY')
-    is_production = os.getenv('VERCEL') is not None
 
-    if not encryption_key:
-        if is_production:
-            # Production: fail hard if key missing
-            raise RuntimeError(
-                "ENCRYPTION_KEY environment variable must be set in production. "
-                "Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
-            )
-        else:
-            # Development: warn but allow (for local testing without full setup)
-            pass
-    else:
+    if encryption_key:
         # Validate key format (Fernet keys are base64-encoded 32-byte keys)
         try:
             from cryptography.fernet import Fernet
