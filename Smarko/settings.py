@@ -40,12 +40,16 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'Smarko_App.middleware.RateLimitMiddleware',
+    'Smarko_App.middleware.PayloadSizeMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'Smarko_App.middleware.SessionBlacklistMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'Smarko_App.middleware.SecurityHeadersMiddleware',
 ]
 
 ROOT_URLCONF = 'Smarko.urls'
@@ -112,6 +116,7 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_HTTPONLY = False
 
+# Email Configuration - Gmail SMTP (funciona em dev e Vercel)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -177,3 +182,34 @@ else:
     CSRF_COOKIE_SECURE = False
     SESSION_COOKIE_SECURE = False
     SECURE_HSTS_SECONDS = 0
+
+
+# ============================================================================
+# Security: Encryption Key Validation (SPRINT 2.2)
+# ============================================================================
+# Validate that encryption key is configured for field-level encryption.
+# Required for OWASP A02:2021 - Cryptographic Failures mitigation
+def _validate_encryption_keys():
+    """Ensure required encryption keys are configured."""
+    encryption_key = os.getenv('ENCRYPTION_KEY')
+    is_production = os.getenv('VERCEL') is not None
+
+    if not encryption_key:
+        if is_production:
+            # Production: fail hard if key missing
+            raise RuntimeError(
+                "ENCRYPTION_KEY environment variable must be set in production. "
+                "Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+            )
+        else:
+            # Development: warn but allow (for local testing without full setup)
+            pass
+    else:
+        # Validate key format (Fernet keys are base64-encoded 32-byte keys)
+        try:
+            from cryptography.fernet import Fernet
+            Fernet(encryption_key.encode() if isinstance(encryption_key, str) else encryption_key)
+        except Exception as e:
+            raise ValueError(f"ENCRYPTION_KEY appears invalid: {e}")
+
+_validate_encryption_keys()

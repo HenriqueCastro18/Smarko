@@ -24,7 +24,8 @@ from Smarko_App.utils import (
     get_session_user,
     validate_password_match,
     render_error,
-    get_firestore_client
+    get_firestore_client,
+    blacklist_session,
 )
 from Smarko_App.email_templates import EmailTemplate
 
@@ -439,7 +440,35 @@ def home_view(request: HttpRequest) -> HttpResponse:
 
 
 def logout_view(request: HttpRequest) -> HttpResponse:
+    """
+    Invalidate user session and log logout event.
+
+    Mitigates: OWASP A07:2021 - Identification and Authentication Failures
+    by ensuring proper session termination and audit logging.
+
+    Flow:
+    1. Get session ID and user ID before flushing
+    2. Blacklist session in Firestore (prevents reuse)
+    3. Log logout event with IP address
+    4. Flush Django session
+    5. Redirect to login
+    """
+    uid = request.session.get('uid')
+    username = request.session.get('username')
+    session_id = request.session.session_key
+    client_ip = get_client_ip(request)
+
+    # Blacklist the session to prevent reuse (server-side logout enforcement)
+    if session_id:
+        blacklist_session(session_id, uid=uid, ttl_seconds=120)
+
+    # Log logout event for audit trail
+    if uid and username:
+        log_security_event(uid, username, 'logout_success', client_ip)
+
+    # Flush Django session
     request.session.flush()
+
     return redirect('login')
 
 

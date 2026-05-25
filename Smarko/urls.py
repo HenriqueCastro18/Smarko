@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from Smarko_App import views
+from Smarko_App import views_lgpd
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -21,4 +22,11 @@ urlpatterns = [
     path('revoke-consent/', views.revoke_consent_view, name='revoke_consent'),
     path('request-deletion/', views.request_account_deletion_view, name='request_deletion'),
     path('cancel-deletion/', views.cancel_account_deletion_view, name='cancel_deletion'),
+
+    # LGPD Compliance Endpoints (SPRINT 3)
+    path('api/user/data-export/', views_lgpd.data_export_view, name='lgpd_data_export'),
+    path('api/user/account-deletion/', views_lgpd.account_deletion_request_view, name='lgpd_account_deletion'),
+    path('api/user/account-deletion/cancel/', views_lgpd.account_deletion_cancel_view, name='lgpd_cancel_deletion'),
+    path('api/user/consent/', views_lgpd.consent_records_view, name='lgpd_consent_records'),
+    path('api/user/consent/revoke/', views_lgpd.consent_revocation_view, name='lgpd_revoke_consent'),
 ]

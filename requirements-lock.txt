@@ -1,0 +1,32 @@
+# Locked dependencies with pinned versions for supply chain security
+# Generated: 2026-05-25
+#
+# SECURITY NOTICE: These versions are fixed to prevent:
+# - Dependency confusion attacks
+# - Typosquatting (package name misspellings)
+# - Malicious package injection via version updates
+#
+# To generate SHA-256 hashes for each package, run:
+#   pip-compile --generate-hashes requirements.txt -o requirements-lock.txt
+#
+# Or manually install with hash verification:
+#   pip install -r requirements-lock.txt --require-hashes
+#
+# Package versions (locked as of 2026-05-25)
+Django==5.1.8
+asgiref==3.11.1
+sqlparse==0.5.5
+tzdata==2026.1
+bcrypt==5.0.0
+python-dotenv==1.2.2
+firebase-admin==6.6.0
+requests==2.32.3
+whitenoise==6.9.0
+gunicorn==23.0.0
+sendgrid==6.10.0
+
+# Additional dependencies for security improvements:
+# - cryptography: For field-level encryption (Fernet/AES)
+# - django-ratelimit: For HTTP rate limiting (alternative to custom middleware)
+# - python-jose: For JWT token handling if needed later
+cryptography==43.0.0

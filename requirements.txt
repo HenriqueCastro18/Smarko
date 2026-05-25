@@ -1,11 +1,20 @@
+# Core framework dependencies
 Django==5.1.8
 asgiref==3.11.1
 sqlparse==0.5.5
 tzdata==2026.1
+
+# Security dependencies
 bcrypt==5.0.0
+cryptography==43.0.0
+werkzeug==3.0.0
+
+# Environment and deployment
 python-dotenv==1.2.2
-firebase-admin==6.6.0
-requests==2.32.3
 whitenoise==6.9.0
 gunicorn==23.0.0
+
+# Cloud services
+firebase-admin==6.6.0
+requests==2.32.3
 sendgrid==6.10.0
