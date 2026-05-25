@@ -1,4 +1,4 @@
-from django.test import SimpleTestCase, Client
+from django.test import SimpleTestCase
 from django.contrib.auth.hashers import make_password, check_password
 from unittest.mock import MagicMock, patch
 import secrets
