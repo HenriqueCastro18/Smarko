@@ -10,7 +10,7 @@
 
 ### Poster
 
-<img src="./docs/smarko_poster_final.pdf" width="400" alt="Poster">
+<img src="./docs/smarko_poster.jpg" width="1200" alt="Poster">
 
 
 ---
